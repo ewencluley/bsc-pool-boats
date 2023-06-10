@@ -15,6 +15,8 @@ from datetime import date
 
 from google.oauth2 import service_account
 
+from session import Session
+
 app = Flask(__name__)
 
 # The ID and range of a sample spreadsheet.
@@ -44,8 +46,14 @@ def get_data():
             return []
 
         return [
-            {"bookedBy": v[1], "bookingDate": v[0], "session": parse_session_date(v[2]), "sessionName": v[2], "boat": v[3], "preferredPosition": v[4], "notes": v[6] if len(v) >= 7 else ""}  
-            for v in filter(lambda b: b, values)
+            {
+            "bookedBy": v[1],
+            "bookingDate": v[0],
+            "session": Session(v[2], parse_session_date(v[2])),
+            "boat": v[3],
+            "preferredPosition": v[4],
+            "notes": v[6] if len(v) >= 7 else ""
+            } for v in filter(lambda b: b, values)
         ]
     except HttpError as err:
         if (err.status_code == 429):
@@ -54,7 +62,7 @@ def get_data():
         print(err)
 
 def get_data_for_date(session_date, bookings):
-	return list(filter(lambda b: b.get('session') == session_date, bookings))
+	return list(filter(lambda b: b.get('session').date == session_date, bookings))
 
 def groupby_boat_type(bookings):
     sorted_bookings = sorted(bookings, key=lambda b: b.get('boat'))
@@ -62,7 +70,13 @@ def groupby_boat_type(bookings):
     return {boat: list(it) for (boat, it) in boat_bookings}
 
 def extract_sessions(bookings):
-	return sorted(set([booking.get('session') for booking in bookings]))
+	return sorted(
+             set([booking.get('session') for booking in bookings]), 
+             key=lambda session: session.date
+    )
+
+def future_sessions(sessions):
+     return filter(lambda session: session.date >= date.today(), sessions)
 
 @app.route('/')
 def root():
@@ -71,7 +85,9 @@ def root():
 @app.route('/all')
 def all():
     bookings = get_data()
-    return render_template('index.html', bookings=groupby_boat_type(bookings), sessions=extract_sessions(bookings))
+    return render_template('index.html', 
+        bookings=groupby_boat_type(bookings), 
+        sessions=future_sessions(extract_sessions(bookings)))
 
 @app.route('/today')
 def today():
@@ -79,7 +95,8 @@ def today():
         bookings = get_data()
         return render_template('index.html', 
         	bookings=groupby_boat_type(get_data_for_date(date.today(), bookings)), 
-        	sessions=extract_sessions(bookings), date=str(date.today()))
+        	sessions=future_sessions(extract_sessions(bookings)), 
+            date=str(date.today()))
     except Exception as ex:
         raise ex
 
@@ -90,7 +107,8 @@ def specific_date(session_date):
         the_date = parse(session_date).date()
         return render_template('index.html', 
         	bookings=groupby_boat_type(get_data_for_date(the_date, bookings)), 
-        	sessions=extract_sessions(bookings), date=str(the_date))
+        	sessions=future_sessions(extract_sessions(bookings)), 
+            date=str(the_date))
     except Exception as ex:
         raise ex
 

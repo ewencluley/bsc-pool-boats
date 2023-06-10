@@ -28,6 +28,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.4/font/bootstrap-icons.css">
   <link rel="apple-touch-icon" sizes="152x152" href="/static/logo.png"/>
 </head>
+</head>
 
 <body>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
@@ -45,7 +46,7 @@
       </button>
       <ul class="dropdown-menu">
         {% for session in sessions %}
-        <li><a class="dropdown-item" href="/date/{{ session }}">{{ session }}</a></li>
+        <li><a class="dropdown-item" href="/date/{{ session.date }}">{{ session.name }}</a></li>
         {% endfor %}
       </ul>
     </div>
